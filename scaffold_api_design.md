@@ -28,38 +28,38 @@
 
 ### 1.1 System Components Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                            CLIENT TIER                                   │
-│              HTTP Clients · SDK Users · Dashboard Users                  │
-└───────────────────────────────┬─────────────────────────────────────────┘
-                                │ HTTPS
-                                ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           EDGE / GATEWAY TIER                            │
-│                                                                          │
-│   ┌─────────────────┐     ┌──────────────────────────────────────────┐  │
-│   │   Nginx/Caddy   │────▶│          FastAPI Application             │  │
-│   │  (TLS, Proxy)   │     │  (Uvicorn workers / Gunicorn)            │  │
-│   └─────────────────┘     └───────────────┬──────────────────────────┘  │
-└───────────────────────────────────────────┼─────────────────────────────┘
-                                            │
-              ┌─────────────────────────────┼─────────────────────────────┐
-              │                             │                             │
-              ▼                             ▼                             ▼
-┌─────────────────────┐     ┌─────────────────────┐     ┌──────────────────────┐
-│   PostgreSQL 16      │     │   Redis 7.x          │     │   Celery Worker(s)   │
-│   (Primary DB)       │     │   (Cache + RateLimit │     │   (Async tasks:      │
-│                      │     │    + Session Store)   │     │   billing, emails,   │
-│   • users            │     │                      │     │   quota reset)       │
-│   • subscriptions    │     │   • Rate limit       │     └──────────────────────┘
-│   • api_keys         │     │     counters         │
-│   • usage_logs       │     │   • API key cache    │     ┌──────────────────────┐
-│   • billing_history  │     │   • JWT blacklist    │     │   Celery Beat        │
-│   • audit_logs       │     │   • Quota cache      │     │   (Scheduler:        │
-└─────────────────────┘     └─────────────────────┘     │   monthly reset,     │
-                                                          │   invoice gen)       │
-                                                          └──────────────────────┘
+```mermaid
+flowchart TD
+    %% Client Tier
+    subgraph ClientTier ["CLIENT TIER"]
+        Clients["HTTP Clients<br/>SDK Users<br/>Dashboard Users"]
+    end
+
+    %% Edge / Gateway Tier
+    subgraph GatewayTier ["EDGE / GATEWAY TIER"]
+        Nginx["Nginx/Caddy<br/>(TLS, Proxy)"]
+        FastAPI["FastAPI Application<br/>(Uvicorn workers / Gunicorn)"]
+    end
+
+    %% Data & Background Tier
+    subgraph DataTier ["DATA & BACKGROUND TIER"]
+        PostgreSQL[("PostgreSQL 16<br/>(Primary DB)<br/>• users<br/>• subscriptions<br/>• api_keys<br/>• usage_logs<br/>• billing_history<br/>• audit_logs")]
+        Redis[("Redis 7.x<br/>(Cache + RateLimit + Session)<br/>• Rate limit counters<br/>• API key cache<br/>• JWT blacklist<br/>• Quota cache")]
+        CeleryWorker["Celery Worker(s)<br/>(Async tasks:<br/>billing, emails, quota reset)"]
+        CeleryBeat["Celery Beat<br/>(Scheduler:<br/>monthly reset, invoice gen)"]
+    end
+
+    Clients -- "HTTPS" --> Nginx
+    Nginx --> FastAPI
+    
+    FastAPI --> PostgreSQL
+    FastAPI --> Redis
+    FastAPI --> CeleryWorker
+    
+    CeleryWorker -.-> PostgreSQL
+    CeleryWorker -.-> Redis
+    CeleryBeat -.-> Redis
+    CeleryBeat -.-> CeleryWorker
 ```
 
 ### 1.2 Mandatory vs Optional Components
