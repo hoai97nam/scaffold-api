@@ -94,6 +94,29 @@ For a small/medium scale (200-500 users), deploying via Docker Compose on a sing
    docker compose start nginx
    ```
 
+## Project Structure & Business Logic
+
+To keep this Commercial SaaS API scalable and maintainable, follow the **Service Layer Pattern**. Do not put complex business rules inside FastAPI routers or database CRUD files.
+
+The architecture flows like this:
+`Routers (HTTP/Input) -> Services (Business Logic) -> CRUD (Database Ops) -> Models (Schema)`
+
+### Where to organize your files:
+- **`app/routers/`**: HTTP endpoints, input validation, and returning JSON. Should be very thin.
+- **`app/services/`**: **Put your core business logic here!** (e.g. `subscription_service.py`). This is where you calculate quotas, verify eligibility for upgrades, trigger emails, and compose multiple CRUD operations together.
+- **`app/crud/`**: Pure database queries using SQLAlchemy. No business rules here, just simple create/read/update/delete functions.
+- **`app/schemas/`**: Pydantic models for request/response validation.
+
+### Example Workflow (Upgrading a Plan)
+1. The user hits `POST /v1/subscriptions/upgrade` (`app/routers/subscriptions.py`).
+2. The router calls `await subscription_service.upgrade_user_plan(user_id, new_plan_id)`.
+3. Inside `app/services/subscription_service.py`, the business logic runs:
+   - Check if the user is already on the plan.
+   - Check if payment is required.
+   - Charge the credit card (via Stripe API).
+   - Call `crud.subscription.update_plan()` to save to DB.
+   - Dispatch an async Celery task to send a receipt email.
+
 ## Next Steps
 - Implement Alembic for database migrations (e.g. `alembic init alembic`).
 - Wire up the actual ORM models in `app/db/models.py`.
