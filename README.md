@@ -20,7 +20,13 @@ This repository contains the scaffold for the Commercial SaaS API designed with 
    docker compose up -d db redis
    ```
 
-3. **Run the Application Locally (Optional: without Docker)**
+3. **Initialize the Database**
+   ```bash
+   # Creates the database tables
+   docker compose run --rm app python -m app.db.init_db
+   ```
+
+4. **Run the Application Locally (Optional: without Docker)**
    *If you prefer running the Python app directly on your host for debugging:*
    ```bash
    python -m venv venv
