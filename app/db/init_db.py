@@ -1,19 +1,65 @@
-import asyncio
-import logging
-from app.db.session import engine, Base
-from app.db.models import User, SubscriptionPlan, UserSubscription, APIKey
+"""
+Database initializer: creates all tables and seeds subscription plans.
+Called once on app startup (idempotent).
+"""
+from datetime import datetime, timezone
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import engine, Base
+from app.db.models import SubscriptionPlan
+
+SEED_PLANS = [
+    {
+        "name": "free",
+        "display_name": "Free",
+        "price_monthly": 0,
+        "price_yearly": 0,
+        "requests_per_min": 10,
+        "requests_per_day": 500,
+        "requests_per_month": 5_000,
+        "max_api_keys": 1,
+        "features": {"support": "community", "analytics": False, "webhooks": False},
+    },
+    {
+        "name": "starter",
+        "display_name": "Starter",
+        "price_monthly": 19.00,
+        "price_yearly": 190.00,
+        "requests_per_min": 60,
+        "requests_per_day": 5_000,
+        "requests_per_month": 50_000,
+        "max_api_keys": 3,
+        "features": {"support": "email", "analytics": True, "webhooks": False},
+    },
+    {
+        "name": "pro",
+        "display_name": "Pro",
+        "price_monthly": 79.00,
+        "price_yearly": 790.00,
+        "requests_per_min": 300,
+        "requests_per_day": 50_000,
+        "requests_per_month": 500_000,
+        "max_api_keys": 10,
+        "features": {"support": "priority", "analytics": True, "webhooks": True},
+    },
+]
+
 
 async def init_db():
-    logger.info("Creating database tables...")
+    """Create tables and seed plans (safe to run multiple times)."""
     async with engine.begin() as conn:
-        # Warning: This will drop all tables and recreate them. 
-        # For production, use Alembic migrations instead!
-        # await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables created successfully!")
 
-if __name__ == "__main__":
-    asyncio.run(init_db())
+    from app.db.session import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
+        for plan_data in SEED_PLANS:
+            result = await session.execute(
+                select(SubscriptionPlan).where(SubscriptionPlan.name == plan_data["name"])
+            )
+            existing = result.scalar_one_or_none()
+            if not existing:
+                plan = SubscriptionPlan(**plan_data)
+                session.add(plan)
+        await session.commit()

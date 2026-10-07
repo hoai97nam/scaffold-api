@@ -30,6 +30,18 @@ services:
     networks:
       - backend
 
+  celery_beat:
+    build: .
+    # Scheduler: daily expired-subscription downgrade + monthly counter sync
+    # --schedule written to /tmp to avoid permission issues with non-root user
+    command: celery -A app.tasks.celery_app beat -l info --scheduler celery.beat:PersistentScheduler --schedule /tmp/celerybeat-schedule
+    restart: always
+    env_file: .env
+    depends_on:
+      - redis
+    networks:
+      - backend
+
   db:
     image: postgres:16-alpine
     restart: always
