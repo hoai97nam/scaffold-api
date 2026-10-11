@@ -156,7 +156,8 @@ app/
 │   ├── subscriptions.py     # GET /subscriptions/plans, POST /subscribe, GET /me, /billing
 │   ├── api_keys.py          # GET|POST /api-keys/, DELETE /api-keys/{id}
 │   ├── usage.py             # GET /usage/
-│   └── users.py             # GET /me  +  GET /v1/analyze  +  GET /v1/process
+│   ├── users.py             # GET /me  +  GET /v1/analyze  +  GET /v1/process
+│   └── tts.py               # GET /v1/tts/voices  +  POST /v1/tts/generate  +  GET /v1/tts/tasks/{id}
 ├── schemas/
 │   └── schemas.py           # All Pydantic request/response models
 ├── middleware/
@@ -166,13 +167,15 @@ app/
 │   ├── usage_tasks.py       # Async DB write of usage logs (retries on failure)
 │   └── subscription_tasks.py # Daily: expire subs → Free downgrade; monthly: counter sync
 ├── services/                # Put complex business logic here (Stripe, email, etc.)
+│   ├── tts_service.py       # TTS business service orchestrator
+│   └── capcut_tts_api/      # Pure-Python CapCut TTS & STT client and Voice catalog
 └── crud/                    # Put pure DB queries here (no business rules)
 ```
 
-**Request flow for business API endpoints:**
+**Request flow for business API endpoints (including TTS):**
 ```
 X-API-Key → Redis cache lookup → DB lookup (cache miss) → subscription check
-         → rate limit (per-min/day/month) → quota check → business logic
+         → rate limit (per-min/day/month) → quota check → business logic (CapCut TTS)
          → response → background: Redis counter++ + DB usage log
 ```
 

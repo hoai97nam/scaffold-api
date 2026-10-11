@@ -158,5 +158,33 @@ class BillingRecord(BaseModel):
         from_attributes = True
 
 
+# ─────────────────────────────────────────────
+# Text to Speech (TTS)
+# ─────────────────────────────────────────────
+
+class TTSGenerateRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=5000, description="Text to synthesize")
+    voice: Optional[str] = Field("BV074_streaming", description="Voice identifier, e.g. 'BV074_streaming' or 'BV421_vivn_streaming'")
+    rate: Optional[str] = Field("1.0", description="Speech speed multiplier, e.g. '1.0'")
+    wait: Optional[bool] = Field(True, description="Whether to wait for audio generation to complete")
+
+
+class VoiceOut(BaseModel):
+    voice_type: str
+    display_name: str
+    resource_id: str
+    lang: str
+    lan: str
+
+
+class TTSGenerateResponse(BaseModel):
+    ok: bool
+    task_id: Optional[str] = None
+    status: Optional[str] = None
+    audio_urls: list[str] = []
+    token: Optional[str] = None
+    response_time_ms: int
+
+
 UserProfile.model_rebuild()
 UsageStats.model_rebuild()

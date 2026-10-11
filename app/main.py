@@ -21,6 +21,7 @@ from app.routers.subscriptions import router as subscriptions_router
 from app.routers.api_keys import router as api_keys_router
 from app.routers.usage import router as usage_router
 from app.routers.users import me_router, api_router
+from app.routers.tts import router as tts_router
 
 
 @asynccontextmanager
@@ -84,6 +85,7 @@ app.include_router(api_keys_router)
 app.include_router(subscriptions_router)
 app.include_router(usage_router)
 app.include_router(api_router)
+app.include_router(tts_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

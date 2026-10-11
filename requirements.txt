@@ -13,3 +13,4 @@ celery==5.3.6
 PyJWT==2.8.0
 bcrypt==5.0.0
 python-multipart==0.0.9
+requests==2.31.0
