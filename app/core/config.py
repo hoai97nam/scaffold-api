@@ -18,6 +18,21 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # ── Casso / VietQR Payment ──────────────────────────────────────
+    # Casso dashboard → Webhook secret (the 'secure-token' header value)
+    CASSO_WEBHOOK_SECRET: str = ""
+    # Bank details for VietQR generation
+    BANK_BIN: str = ""             # e.g. "970436" (Vietcombank)
+    BANK_ACCOUNT: str = ""         # e.g. "1234567890"
+    BANK_ACCOUNT_NAME: str = ""    # e.g. "NGUYEN VAN A"
+    # Lifetime plan price in VND (integer)
+    PRICE_LIFETIME: int = 590000
+    # Shared secret embedded in your desktop/mobile app binary.
+    # Clients must send it as: X-App-Secret: <value>
+    # Used to guard POST /v1/orders against random internet abuse.
+    # Generate with: python -c "from secrets import token_hex; print(token_hex(32))"
+    APP_SECRET: str = ""
+
     @property
     def DATABASE_URL(self) -> str:
         return (

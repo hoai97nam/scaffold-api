@@ -15,6 +15,59 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 
+# -- Payment / Casso ----------------------------------------------------------
+
+class PaymentOrder(Base):
+    """
+    Represents a one-time payment order created by the client.
+
+    Lifecycle: pending → paid | expired
+
+    Fields:
+        poll_token_hash  – SHA-256 of the raw poll token. The raw token is
+                           returned to the client ONCE at creation and never
+                           stored. The client uses it to poll status.
+        payment_code     – Short code (e.g. ACC1A2B3C4D) the user puts in the
+                           bank transfer memo so we can match the transaction.
+    """
+    __tablename__ = "payment_orders"
+
+    id = Column(Text, primary_key=True)                             # random ~18-char slug
+    user_id = Column(Text, nullable=False, index=True)              # opaque user identifier from the client app
+    plan = Column(Text, nullable=False, default="lifetime")         # only 'lifetime' for now
+    amount = Column(Integer, nullable=False)                         # amount in VND (integer)
+    payment_code = Column(Text, nullable=False, unique=True)        # memo code to match bank tx
+    poll_token_hash = Column(Text, nullable=False, unique=True)     # SHA-256(raw poll_token)
+    status = Column(Text, nullable=False, default="pending")        # pending | paid | expired
+    license_token = Column(Text)                                    # set once payment is confirmed
+    transaction_id = Column(Text, ForeignKey("casso_transactions.transaction_id"), index=True)
+    paid_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), nullable=False, default=now_utc)
+    expires_at = Column(DateTime(timezone=True), nullable=False)    # 30 min from created_at
+
+    casso_transaction = relationship("CassoTransaction", back_populates="order", foreign_keys=[transaction_id])
+
+
+class CassoTransaction(Base):
+    """
+    Immutable log of every bank transaction pushed by Casso.
+    Acts as an idempotency guard: if Casso retries a webhook we skip duplicates.
+    """
+    __tablename__ = "casso_transactions"
+
+    transaction_id = Column(Text, primary_key=True)   # Casso's unique tx ID
+    order_id = Column(Text, ForeignKey("payment_orders.id"), index=True)
+    amount = Column(Integer, nullable=False)            # VND
+    description = Column(Text)
+    raw_json = Column(JSONB, nullable=False, default=dict)
+    received_at = Column(DateTime(timezone=True), nullable=False, default=now_utc)
+
+    order = relationship("PaymentOrder", back_populates="casso_transaction", foreign_keys=[order_id])
+
+
+
+# -- Users & Subscriptions ----------------------------------------------------
+
 class User(Base):
     __tablename__ = "users"
 

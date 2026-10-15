@@ -188,3 +188,71 @@ class TTSGenerateResponse(BaseModel):
 
 UserProfile.model_rebuild()
 UsageStats.model_rebuild()
+
+
+# ─────────────────────────────────────────────
+# Payment / Casso (VietQR + Open Banking)
+# ─────────────────────────────────────────────
+
+class CreateOrderRequest(BaseModel):
+    """Client sends this to kick off a payment flow."""
+    user_id: str = Field(..., description="Opaque user identifier from the client app (e.g. 'ACC-PC-...')")
+    plan: str = Field("lifetime", description="Plan to purchase. Currently only 'lifetime' is supported.")
+
+
+class BankInfo(BaseModel):
+    bin: str
+    account: str
+    account_name: str
+
+
+class CreateOrderResponse(BaseModel):
+    order_id: str
+    poll_token: str           # Raw token — returned ONCE. Client stores it for polling.
+    status: str               # always 'pending' on creation
+    plan: str
+    amount: int               # VND
+    payment_code: str         # Short memo code the user puts in the bank transfer
+    expires_at: datetime
+    bank: BankInfo
+    qr_url: str               # VietQR image URL, ready to display
+
+
+class OrderStatusResponse(BaseModel):
+    order_id: str
+    status: str               # pending | paid | expired
+    plan: str
+    amount: int
+    payment_code: str
+    expires_at: datetime
+    paid_at: Optional[datetime] = None
+    license: Optional[str] = None   # non-null only when status == 'paid'
+
+
+# ── Casso Webhook Payload ──────────────────────────────────────
+# Casso POSTs JSON bodies that look like:
+#   {"error": 0, "data": [{"id": 12345, "amount": 590000,
+#                          "description": "ACCXYZ123", ...}]}
+# We keep validation permissive ("extra = 'allow'") because Casso can add new
+# fields at any time and we want the webhook to stay robust.
+
+class CassoTransactionItem(BaseModel):
+    model_config = {"extra": "allow"}
+
+    id: Optional[int] = None
+    tid: Optional[str] = None           # Casso transaction ID (preferred)
+    amount: int = 0
+    description: Optional[str] = None
+    when: Optional[str] = None          # ISO datetime string from Casso
+
+    @property
+    def transaction_id(self) -> str:
+        """Return a stable string key for idempotency checks."""
+        return str(self.tid or self.id or "")
+
+
+class CassoWebhookPayload(BaseModel):
+    model_config = {"extra": "allow"}
+
+    error: int = 0
+    data: list[CassoTransactionItem] = []

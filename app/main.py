@@ -22,6 +22,7 @@ from app.routers.api_keys import router as api_keys_router
 from app.routers.usage import router as usage_router
 from app.routers.users import me_router, api_router
 from app.routers.tts import router as tts_router
+from app.routers.payments import router as payments_router
 
 
 @asynccontextmanager
@@ -55,7 +56,8 @@ app = FastAPI(
         "- **Usage tracking**: Redis counter + async PostgreSQL audit log\n"
         "- **API Key management**: create, list, revoke (immediate cache invalidation)\n"
         "- **Billing history**: immutable append-only ledger\n"
-        "- **Plan-based feature gating**: different capabilities per tier\n\n"
+        "- **Plan-based feature gating**: different capabilities per tier\n"
+        "- **Casso / VietQR payments**: one-time lifetime purchase via Vietnamese open banking\n\n"
         "### Quick Start\n"
         "1. `POST /auth/register` → get `access_token`\n"
         "2. `POST /api-keys/` (Bearer token) → get `raw_key`\n"
@@ -86,6 +88,7 @@ app.include_router(subscriptions_router)
 app.include_router(usage_router)
 app.include_router(api_router)
 app.include_router(tts_router)
+app.include_router(payments_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
